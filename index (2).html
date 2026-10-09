@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Un abrazo para vos</title>
+<meta name="theme-color" content="#2b1b45">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --plum:#1f1238; --dusk:#3a2362; --lilac:#b27bd6; --rose:#ff9fb8; --butter:#ffe6a3; --paper:#fff0f4; --ink:#4a2a63;
+    --ui:"Fredoka","Trebuchet MS",system-ui,sans-serif;
+    --hand:"Caveat","Segoe Script","Bradley Hand",cursive;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:var(--ui);color:#fff;
+    background:radial-gradient(120% 90% at 50% 105%,#ff9fb8 0%,#b27bd6 34%,#3a2362 68%,#1f1238 100%);
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  }
+  #stage{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #glow{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(70% 60% at 50% 55%,rgba(255,159,184,.55),rgba(255,159,184,0) 70%)}
+
+  #meter{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 18px);transform:translateX(-50%);display:flex;gap:.45rem;font-size:1.5rem;pointer-events:none}
+  #meter span{color:rgba(255,255,255,.28);transition:color .3s,transform .3s}
+  #meter span.on{color:var(--rose);transform:scale(1.2);text-shadow:0 0 14px rgba(255,159,184,.8)}
+
+  #sound{position:fixed;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 12px);width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:1.15rem;cursor:pointer;backdrop-filter:blur(6px)}
+
+  #bubble{
+    position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 66px);transform:translate(-50%,10px);
+    max-width:min(86vw,430px);padding:.5rem 1.2rem .6rem;border-radius:24px;text-align:center;
+    font-family:var(--hand);font-weight:700;font-size:clamp(1.55rem,5.4vw,2rem);line-height:1.15;
+    background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(8px);
+    opacity:0;transition:opacity .35s,transform .35s;pointer-events:none;text-shadow:0 1px 8px rgba(31,18,56,.5)
+  }
+  #bubble.show{opacity:1;transform:translate(-50%,0)}
+
+  #hint{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);transform:translateX(-50%);width:min(88vw,380px);text-align:center;font-size:.98rem;line-height:1.45;color:rgba(255,255,255,.85);pointer-events:none;transition:opacity .6s}
+  #hint.gone{opacity:0}
+
+  #gift{
+    position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translate(-50%,20px);
+    padding:.85rem 1.7rem;border:0;border-radius:999px;cursor:pointer;
+    font:600 1.15rem var(--ui);color:var(--plum);background:linear-gradient(135deg,var(--butter),var(--rose));
+    box-shadow:0 10px 30px rgba(255,159,184,.45);opacity:0;pointer-events:none;transition:opacity .6s,transform .6s;
+  }
+  #gift.show{opacity:1;pointer-events:auto;transform:translate(-50%,0);animation:beat 1.8s ease-in-out .8s infinite}
+  @keyframes beat{0%,100%{box-shadow:0 10px 30px rgba(255,159,184,.45)}50%{box-shadow:0 10px 44px rgba(255,159,184,.9)}}
+
+  .fx{position:fixed;pointer-events:none;z-index:5;font-size:var(--s,24px);animation:rise var(--d,1.8s) ease-out forwards;will-change:transform,opacity}
+  @keyframes rise{
+    0%{transform:translate(-50%,-50%) scale(.4);opacity:0}
+    15%{opacity:1}
+    100%{transform:translate(calc(-50% + var(--dx)),calc(-50% - var(--dy))) scale(1.1) rotate(var(--r));opacity:0}
+  }
+
+  .overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:1.5rem;
+    background:rgba(31,18,56,.62);backdrop-filter:blur(7px);transition:opacity .6s}
+  .overlay[hidden]{display:none}
+  .overlay.out{opacity:0;pointer-events:none}
+  #intro{flex-direction:column;text-align:center;gap:1.1rem}
+  #intro h1{font-weight:600;font-size:clamp(2.3rem,10vw,3.6rem);letter-spacing:-.01em}
+  #intro p{max-width:30ch;font-size:1.15rem;line-height:1.5;color:rgba(255,255,255,.88)}
+  .btn{margin-top:.4rem;padding:.85rem 1.8rem;border:0;border-radius:999px;cursor:pointer;font:600 1.1rem var(--ui);color:var(--plum);background:linear-gradient(135deg,var(--butter),var(--rose))}
+  .btn:focus-visible,#sound:focus-visible,#gift:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+  #letter .card{
+    width:min(92vw,460px);max-height:86vh;overflow:auto;padding:1.8rem 1.6rem 1.5rem;border-radius:18px;
+    background:var(--paper);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45);
+    font-family:var(--hand);font-weight:500;font-size:clamp(1.45rem,5vw,1.75rem);line-height:1.3;
+    animation:unfold .7s cubic-bezier(.2,.9,.3,1.2)
+  }
+  @keyframes unfold{from{transform:scale(.7) rotate(-3deg);opacity:0}to{transform:none;opacity:1}}
+  #letter h2{font-weight:700;font-size:2.1rem;margin-bottom:.6rem}
+  #letter p{margin-bottom:.8rem}
+  #letter .sign{text-align:right;font-weight:700;font-size:1.9rem;margin-top:.4rem}
+  #letter .btn{display:block;margin:1.1rem auto 0;font-size:1rem;color:#fff;background:var(--ink)}
+
+  @media (prefers-reduced-motion:reduce){
+    #gift.show{animation:none}
+    .fx{animation-duration:1s}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-label="Un osito de peluche que podés tocar, acariciar y abrazar"></canvas>
+<div id="glow"></div>
+
+<div id="meter" aria-hidden="true"></div>
+<button id="sound" type="button" aria-label="Silenciar sonido">🔊</button>
+<div id="bubble" role="status" aria-live="polite"></div>
+<p id="hint">Tocalo. Mantené apretado para abrazarlo. Acariciale la cabeza.</p>
+<button id="gift" type="button">Abrazo para vos</button>
+
+<div id="intro" class="overlay" role="dialog" aria-labelledby="introTitle">
+  <h1 id="introTitle">Para <span data-name></span></h1>
+  <p>Hoy no te puedo abrazar, así que mandé a este osito en mi lugar.</p>
+  <button id="start" class="btn" type="button">Conocer al osito</button>
+</div>
+
+<div id="letter" class="overlay" role="dialog" aria-labelledby="letterTitle" hidden>
+  <div class="card">
+    <h2 id="letterTitle"></h2>
+    <div id="letterBody"></div>
+    <p class="sign" id="letterSign"></p>
+    <button id="closeLetter" class="btn" type="button">Volver con el osito</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   EDITÁ ESTO: nombres y mensajes. Lo demás ya funciona solo.
+   {name} = su nombre, {me} = tu nombre
+   ============================================================ */
+const CONFIG = {
+  herName: "Gigi",
+  myName: "Bauti",
+  hugsToUnlock: 3, // abrazos necesarios para que aparezca la carta
+
+  greetings: [
+    "Hola, {name}. Te estaba esperando.",
+    "Llegaste. {me} me dijo que ibas a venir."
+  ],
+  returning: [
+    "¡Volviste! Te extrañé un montón.",
+    "Ahí estás. Te guardé un abrazo."
+  ],
+  taps: [
+    "¡Hola!",
+    "Jiji, me hacés cosquillas.",
+    "Acá estoy, no me fui a ningún lado.",
+    "{me} me mandó a cuidarte.",
+    "Sos lo más lindo de mi día."
+  ],
+  idle: [
+    "¿Me das un abrazo?",
+    "Mantenéme apretado un ratito.",
+    "Acariciame la cabeza, dale.",
+    "Acá estoy cuando quieras."
+  ],
+  pets: [
+    "Ay, qué rico…",
+    "Seguí, seguí…",
+    "Me quedo dormido si seguís."
+  ],
+  hugs: [
+    "Abrazo recibido. Ya se lo cuento a {me}.",
+    "Quedate un ratito más.",
+    "Ese abrazo llegó enterito.",
+    "Qué calentito que estás."
+  ],
+  unlock: "Tengo algo para vos.",
+
+  letter: [
+    "Quería que tuvieras un abrazo para cuando yo no estoy.",
+    "Este osito no se cansa, no se va y siempre te espera.",
+    "Gracias por hacer que la distancia pese menos, por las videollamadas eternas y por quedarte.",
+    "Cada vez que lo abrazaste, yo estaba pensando en vos. Te quiero muchísimo."
+  ]
+};
+/* ============================================================ */
+
+const $ = (id) => document.getElementById(id);
+const rand = (a) => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = (x) => x * x * (3 - 2 * x);
+const fill = (s) => s.replace(/\{name\}/g, CONFIG.herName).replace(/\{me\}/g, CONFIG.myName);
+const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- Textos ---------- */
+document.querySelectorAll("[data-name]").forEach((el) => (el.textContent = CONFIG.herName));
+document.title = "Un abrazo para " + CONFIG.herName;
+$("letterTitle").textContent = CONFIG.herName + ",";
+$("letterSign").textContent = "— " + CONFIG.myName;
+CONFIG.letter.forEach((t) => { const p = document.createElement("p"); p.textContent = fill(t); $("letterBody").appendChild(p); });
+
+/* ---------- Estado ---------- */
+const S = {
+  started: false, down: false, downT: 0, moved: 0, part: null, lastX: 0, lastY: 0,
+  hugging: false, petting: false, hugHold: 0, hug: 0, hugTarget: 0, pet: 0, petTarget: 0,
+  happy: 0, wave: 0, jy: 0, jv: 0, land: 0, blink: 0, nextBlink: 2,
+  nx: 0, ny: 0, lastMove: 0, lastAct: 0, hugs: store.get("osito-hugs", 0), beat: null, hugTimer: null, petFx: 0, letterOpen: false
+};
+
+/* ---------- Medidor de abrazos ---------- */
+const meter = $("meter");
+for (let i = 0; i < CONFIG.hugsToUnlock; i++) { const s = document.createElement("span"); s.textContent = "♥"; meter.appendChild(s); }
+function updateMeter() { [...meter.children].forEach((s, i) => s.classList.toggle("on", i < S.hugs)); }
+updateMeter();
+
+/* ---------- Burbuja ---------- */
+let bubbleTimer;
+function say(text, ms = 3800) {
+  const b = $("bubble");
+  b.textContent = fill(text);
+  b.classList.add("show");
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => b.classList.remove("show"), ms);
+  S.lastAct = performance.now();
+}
+
+/* ---------- Corazoncitos DOM ---------- */
+const FX = ["💗", "💖", "💕", "💞", "✨"];
+function burst(x, y, n = 6, spread = 70) {
+  for (let i = 0; i < n; i++) {
+    const e = document.createElement("span");
+    e.className = "fx";
+    e.textContent = rand(FX);
+    e.style.left = x + (Math.random() - 0.5) * spread + "px";
+    e.style.top = y + "px";
+    e.style.setProperty("--s", 18 + Math.random() * 20 + "px");
+    e.style.setProperty("--dx", (Math.random() - 0.5) * 120 + "px");
+    e.style.setProperty("--dy", 90 + Math.random() * 130 + "px");
+    e.style.setProperty("--r", (Math.random() - 0.5) * 50 + "deg");
+    e.style.setProperty("--d", 1.4 + Math.random() * 1.1 + "s");
+    e.addEventListener("animationend", () => e.remove());
+    document.body.appendChild(e);
+  }
+}
+
+/* ---------- Audio ---------- */
+let ac = null, purr = null, muted = false;
+function audio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (ac && ac.state === "suspended") ac.resume();
+  return ac;
+}
+function chime(f = 660) {
+  if (muted) return;
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = "sine";
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.12);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + 0.4);
+}
+function startPurr() {
+  if (muted || purr) return;
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), lfo = a.createOscillator(), lp = a.createBiquadFilter(), g = a.createGain(), lg = a.createGain();
+  o.type = "sawtooth"; o.frequency.value = 48;
+  lp.type = "lowpass"; lp.frequency.value = 220;
+  g.gain.value = 0.0001;
+  lfo.frequency.value = 24; lg.gain.value = 0.05;
+  lfo.connect(lg); lg.connect(g.gain);
+  o.connect(lp); lp.connect(g); g.connect(a.destination);
+  o.start(); lfo.start();
+  g.gain.setTargetAtTime(0.07, a.currentTime, 0.25);
+  purr = { o, lfo, g };
+}
+function stopPurr() {
+  if (!purr || !ac) return;
+  const p = purr; purr = null;
+  p.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.15);
+  setTimeout(() => { try { p.o.stop(); p.lfo.stop(); } catch (e) {} }, 700);
+}
+$("sound").addEventListener("click", () => {
+  muted = !muted;
+  $("sound").textContent = muted ? "🔇" : "🔊";
+  $("sound").setAttribute("aria-label", muted ? "Activar sonido" : "Silenciar sonido");
+  if (muted) stopPurr();
+});
+
+/* ---------- Escena 3D ---------- */
+const canvas = $("stage");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+let camDist = 9;
+
+scene.add(new THREE.HemisphereLight(0xffd6e6, 0x5a3a8a, 0.95));
+const sun = new THREE.DirectionalLight(0xfff0e0, 0.85); sun.position.set(3, 6, 6); scene.add(sun);
+const rim = new THREE.PointLight(0xb27bd6, 0.9, 30); rim.position.set(-5, 3, -2); scene.add(rim);
+const fillL = new THREE.PointLight(0xff9fb8, 0.35, 30); fillL.position.set(4, 1, 5); scene.add(fillL);
+
+const M = {
+  fur: new THREE.MeshStandardMaterial({ color: 0xd99a6c, roughness: 0.95 }),
+  belly: new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.95 }),
+  pink: new THREE.MeshStandardMaterial({ color: 0xff9fb8, roughness: 0.9 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x2a1a22, roughness: 0.35 }),
+  white: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  cheek: new THREE.MeshBasicMaterial({ color: 0xff7fa3, transparent: true, opacity: 0.35, depthWrite: false })
+};
+function sph(r, mat, sx = 1, sy = 1, sz = 1) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 24), mat);
+  m.scale.set(sx, sy, sz);
+  return m;
+}
+
+const bear = new THREE.Group(); scene.add(bear);
+
+const body = sph(1, M.fur, 1.05, 1.1, 0.95); body.position.y = 0.95; bear.add(body);
+const bellyM = sph(0.7, M.belly, 1, 1.05, 0.5); bellyM.position.set(0, 0.9, 0.72); bear.add(bellyM);
+
+[-1, 1].forEach((s) => {
+  const leg = sph(0.45, M.fur, 1, 0.9, 1.1); leg.position.set(s * 0.58, 0.25, 0.5); bear.add(leg);
+  const pad = sph(0.26, M.pink, 1, 1, 0.25); pad.position.set(s * 0.58, 0.27, 0.99); bear.add(pad);
+});
+
+const headG = new THREE.Group(); headG.position.set(0, 2.5, 0.05); bear.add(headG);
+headG.add(sph(0.95, M.fur, 1.08, 1, 1));
+const ears = [-1, 1].map((s) => {
+  const g = new THREE.Group(); g.position.set(s * 0.78, 0.78, -0.05);
+  g.add(sph(0.3, M.fur));
+  const inner = sph(0.18, M.pink, 1, 1, 0.5); inner.position.z = 0.14; g.add(inner);
+  headG.add(g); return g;
+});
+const muzzle = sph(0.38, M.belly, 1, 0.8, 0.8); muzzle.position.set(0, -0.25, 0.82); headG.add(muzzle);
+const nose = sph(0.11, M.dark, 1.2, 0.9, 0.9); nose.position.set(0, -0.07, 1.11); headG.add(nose);
+const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.014, 8, 20, Math.PI), M.dark);
+mouth.rotation.z = Math.PI; mouth.position.set(0, -0.2, 1.08); headG.add(mouth);
+
+const eyes = [-1, 1].map((s) => {
+  const g = new THREE.Group(); g.position.set(s * 0.36, 0.2, 0.83);
+  g.add(sph(0.1, M.dark, 1, 1.15, 0.8));
+  const shine = sph(0.03, M.white); shine.position.set(0.03, 0.05, 0.07); g.add(shine);
+  headG.add(g); return g;
+});
+const cheeks = [-1, 1].map((s) => {
+  const c = sph(0.15, M.cheek, 1, 0.8, 0.4); c.position.set(s * 0.62, -0.12, 0.68); c.rotation.y = s * 0.55; headG.add(c); return c;
+});
+
+function makeArm(s) {
+  const g = new THREE.Group(); g.position.set(s * 0.95, 1.55, 0.1);
+  const m = sph(0.3, M.fur, 0.9, 1.5, 0.9); m.position.y = -0.5; g.add(m);
+  bear.add(g); return g;
+}
+const armL = makeArm(-1), armR = makeArm(1);
+
+/* Corazón 3D (aparece cuando abrazás) */
+const heart = (() => {
+  const sh = new THREE.Shape(), pts = 64;
+  for (let i = 0; i <= pts; i++) {
+    const t = (i / pts) * Math.PI * 2;
+    const x = 16 * Math.pow(Math.sin(t), 3) / 34;
+    const y = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 34;
+    i === 0 ? sh.moveTo(x, y) : sh.lineTo(x, y);
+  }
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.04, bevelSegments: 4 });
+  geo.center();
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xff5d8f, emissive: 0x661133, roughness: 0.4 }));
+  m.scale.setScalar(0.0001); bear.add(m); return m;
+})();
+
+/* Sombra */
+const shadow = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const x = c.getContext("2d"), g = x.createRadialGradient(64, 64, 4, 64, 64, 62);
+  g.addColorStop(0, "rgba(20,8,40,.55)"); g.addColorStop(1, "rgba(20,8,40,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = -0.13; scene.add(m); return m;
+})();
+
+/* Estrellas */
+const stars = (() => {
+  const n = 240, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 44; pos[i * 3 + 1] = -3 + Math.random() * 22; pos[i * 3 + 2] = -28 + Math.random() * 18; }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffe6a3, size: 0.16, transparent: true, opacity: 0.8, depthWrite: false }));
+  scene.add(p); return p;
+})();
+
+/* ---------- Tamaño ---------- */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camDist = Math.max(9, 5.4 / camera.aspect);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ---------- Interacción ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hit(x, y) {
+  ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObjects(bear.children, true)[0];
+  if (!h) return null;
+  for (let o = h.object; o; o = o.parent) if (o === headG) return "head";
+  return "body";
+}
+
+function startHug() {
+  if (S.hugging || S.letterOpen) return;
+  S.hugging = true; S.hugTarget = 1; S.hugHold = 0;
+  startPurr();
+  if (navigator.vibrate) { navigator.vibrate([25, 90, 35]); S.beat = setInterval(() => navigator.vibrate([25, 90, 35]), 1000); }
+}
+function endHug() {
+  if (!S.hugging) return;
+  S.hugging = false; S.hugTarget = 0;
+  stopPurr(); clearInterval(S.beat);
+  const counted = S.hugHold >= 1.0;
+  S.hugHold = 0; S.happy = 1;
+  if (!counted) { say("Un poquito más… dale."); return; }
+  S.hugs++; store.set("osito-hugs", S.hugs); updateMeter();
+  burst(innerWidth / 2, innerHeight * 0.5, 14, 160);
+  chime(880);
+  $("hint").classList.add("gone");
+  if (S.hugs === CONFIG.hugsToUnlock) {
+    say(CONFIG.hugs[0]);
+    setTimeout(() => { say(CONFIG.unlock, 4500); $("gift").classList.add("show"); chime(990); }, 2600);
+  } else {
+    say(rand(CONFIG.hugs));
+  }
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (!S.started || S.letterOpen) return;
+  canvas.setPointerCapture(e.pointerId);
+  S.down = true; S.downT = performance.now(); S.moved = 0; S.lastX = e.clientX; S.lastY = e.clientY;
+  S.part = hit(e.clientX, e.clientY); S.petting = false;
+  S.lastAct = performance.now();
+  clearTimeout(S.hugTimer);
+  S.hugTimer = setTimeout(() => { if (S.down && !S.petting) startHug(); }, 350);
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  S.nx = (e.clientX / innerWidth) * 2 - 1;
+  S.ny = (e.clientY / innerHeight) * 2 - 1;
+  S.lastMove = performance.now();
+  if (!S.down) return;
+  S.moved += Math.hypot(e.clientX - S.lastX, e.clientY - S.lastY);
+  S.lastX = e.clientX; S.lastY = e.clientY;
+  if (S.part === "head" && !S.hugging && S.moved > 18) {
+    if (!S.petting) { S.petting = true; S.petTarget = 1; say(rand(CONFIG.pets)); }
+    const now = performance.now();
+    if (now - S.petFx > 260) { S.petFx = now; burst(e.clientX, e.clientY - 20, 1, 30); }
+  }
+});
+
+function release(e, cancelled) {
+  if (!S.down) return;
+  S.down = false;
+  clearTimeout(S.hugTimer);
+  const dur = performance.now() - S.downT;
+  if (S.hugging) { endHug(); return; }
+  if (S.petting) { S.petting = false; S.petTarget = 0; S.happy = 0.8; return; }
+  if (!cancelled && dur < 350 && S.moved < 18) {
+    S.jv = reduce ? 2.4 : 4.6; S.happy = 1; S.wave = 1.2;
+    burst(e.clientX, e.clientY, 5, 60);
+    chime(520 + Math.random() * 200);
+    if (Math.random() < 0.75) say(rand(CONFIG.taps), 3000);
+  }
+}
+canvas.addEventListener("pointerup", (e) => release(e, false));
+canvas.addEventListener("pointercancel", (e) => release(e, true));
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+/* ---------- Carta ---------- */
+function openLetter() {
+  S.letterOpen = true; endHug();
+  $("letter").hidden = false;
+  chime(660); setTimeout(() => chime(880), 160);
+  burst(innerWidth / 2, innerHeight * 0.6, 16, 220);
+  $("closeLetter").focus();
+}
+function closeLetter() { S.letterOpen = false; $("letter").hidden = true; S.lastAct = performance.now(); $("gift").focus(); }
+$("gift").addEventListener("click", openLetter);
+$("closeLetter").addEventListener("click", closeLetter);
+$("letter").addEventListener("click", (e) => { if (e.target === $("letter")) closeLetter(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.letterOpen) closeLetter(); });
+
+/* ---------- Inicio ---------- */
+$("start").addEventListener("click", () => {
+  audio(); chime(740);
+  const intro = $("intro");
+  intro.classList.add("out");
+  setTimeout(() => (intro.hidden = true), 650);
+  S.started = true; S.lastAct = performance.now();
+  const visits = store.get("osito-visits", 0);
+  store.set("osito-visits", visits + 1);
+  setTimeout(() => say(visits > 0 ? rand(CONFIG.returning) : rand(CONFIG.greetings), 4200), 500);
+  S.wave = 1.4;
+  if (S.hugs >= CONFIG.hugsToUnlock) { $("gift").classList.add("show"); $("hint").classList.add("gone"); }
+});
+
+setInterval(() => {
+  if (!S.started || S.down || S.letterOpen) return;
+  if (performance.now() - S.lastAct > 13000) say(rand(CONFIG.idle), 3500);
+}, 1000);
+
+/* ---------- Animación ---------- */
+const clock = new THREE.Clock();
+const glow = $("glow");
+const amp = reduce ? 0.4 : 1;
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime, k = (v) => Math.min(1, dt * v);
+
+  S.hug += (S.hugTarget - S.hug) * k(5);
+  S.pet += (S.petTarget - S.pet) * k(6);
+  S.happy = Math.max(0, S.happy - dt * 1.2);
+  S.wave = Math.max(0, S.wave - dt);
+  if (S.hugging) S.hugHold += dt;
+  if (performance.now() - S.lastMove > 2500) { S.nx += (0 - S.nx) * k(1.5); S.ny += (0 - S.ny) * k(1.5); }
+
+  // salto y aterrizaje
+  S.jv -= 16 * dt; S.jy += S.jv * dt;
+  if (S.jy < 0) { S.jy = 0; if (S.jv < -2) S.land = 1; S.jv = 0; }
+  S.land = Math.max(0, S.land - dt * 5);
+  const h = ease(clamp(S.hug, 0, 1));
+
+  bear.position.y = S.jy;
+  bear.scale.set(1 + 0.05 * S.land + 0.03 * h, 1 - 0.06 * S.land - 0.02 * h, 1 + 0.05 * S.land);
+  body.scale.y = 1.1 * (1 + Math.sin(t * 1.7) * 0.012 * amp);
+
+  // cabeza: sigue el dedo, se inclina al abrazar, se entrega al acariciar
+  const lookX = clamp(S.nx, -1, 1) * 0.55 * (1 - S.pet * 0.6);
+  const lookY = -clamp(S.ny, -1, 1) * 0.3;
+  headG.rotation.y += (lookX - headG.rotation.y) * k(6);
+  headG.rotation.x += (lookY + 0.28 * h + 0.12 * S.pet - headG.rotation.x) * k(6);
+  headG.rotation.z = Math.sin(t * 3) * 0.12 * S.pet + Math.sin(t * 1.1) * 0.02 * amp + Math.sin(t * 2) * 0.05 * h;
+  headG.position.y = 2.5 + Math.sin(t * 1.7 + 0.5) * 0.015 * amp - 0.1 * h;
+
+  ears.forEach((e, i) => { e.rotation.z = Math.sin(t * 14 + i) * 0.12 * S.happy * amp; });
+
+  // brazos
+  armL.rotation.x = -1.7 * h + Math.sin(t * 1.7) * 0.02 * amp;
+  armL.rotation.z = -0.2 * (1 - h) + 0.9 * h;
+  armR.rotation.x = -1.7 * h;
+  let rz = 0.2 * (1 - h) - 0.9 * h;
+  if (S.wave > 0 && h < 0.2) { const w = Math.min(1, S.wave * 3); rz = rz * (1 - w) + (2.5 + Math.sin(t * 20) * 0.3 * amp) * w; }
+  armR.rotation.z = rz;
+
+  // ojos y cachetes
+  S.nextBlink -= dt;
+  if (S.nextBlink <= 0) { S.blink = 0.14; S.nextBlink = 2.5 + Math.random() * 2.5; }
+  S.blink = Math.max(0, S.blink - dt);
+  const blinkV = S.blink > 0 ? Math.sin((S.blink / 0.14) * Math.PI) : 0;
+  const closed = Math.max(blinkV, S.pet * 0.95, h * 0.9, S.happy * 0.5);
+  eyes.forEach((e) => { e.scale.y = Math.max(0.12, 1 - closed); });
+  M.cheek.opacity = 0.35 + 0.5 * Math.max(S.pet, h, S.happy);
+  mouth.scale.set(1 + 0.45 * Math.max(S.happy, h, S.pet), 1 + 0.45 * Math.max(S.happy, h, S.pet), 1);
+
+  // corazón con latido
+  const hs = ease(clamp((S.hug - 0.55) / 0.45, 0, 1)) * (0.62 + 0.08 * Math.max(0, Math.sin(t * 6.5)));
+  heart.scale.setScalar(Math.max(0.0001, hs));
+  heart.position.set(0, 1.5 + 0.05 * Math.sin(t * 3), 1.35);
+  heart.rotation.y = Math.sin(t * 1.5) * 0.4;
+
+  // sombra, estrellas, cámara
+  const ss = 1 / (1 + S.jy * 0.5); shadow.scale.set(ss, ss, ss);
+  stars.material.opacity = 0.65 + 0.2 * Math.sin(t * 1.3) * amp;
+  stars.rotation.z = Math.sin(t * 0.05) * 0.03;
+  camera.position.set(0, 2.2 - 0.25 * h, camDist - 1.4 * h);
+  camera.lookAt(0, 1.75, 0);
+  glow.style.opacity = (h * 0.6).toFixed(3);
+
+  renderer.render(scene, camera);
+}
+frame();
+</script>
+</body>
+</html>
